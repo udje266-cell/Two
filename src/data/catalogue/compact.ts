@@ -4,8 +4,19 @@ import type { Etape, IngredientRecette, Niveau, Recette } from '@/domain/types';
  * Format d'écriture compact des recettes du catalogue.
  * - i : [id, quantité, préparation?] ; un id préfixé de « ? » est facultatif,
  *   suffixé de « ! » sa quantité est fixe (ne suit pas les portions).
- * - e : [action, repère, minutes de minuteur?, dose?]
+ * - e : [action, repère, minutes de minuteur?, dose?] ou, pour une étape détaillée,
+ *   { a: action, r: repère, min?, dose?, d?: [[ingrédient, part 0–1], …], feu?, astuce? }
  */
+export type EtapeDetaillee = {
+  a: string;
+  r: string;
+  min?: number;
+  dose?: string;
+  d?: [string, number][];
+  feu?: string;
+  astuce?: string;
+};
+
 export type RecetteCompacte = {
   s: string;
   t: string;
@@ -18,7 +29,7 @@ export type RecetteCompacte = {
   pc?: boolean;
   m: string[];
   i: [string, number, string?][];
-  e: [string, string, number?, string?][];
+  e: ([string, string, number?, string?] | EtapeDetaillee)[];
   al?: string[];
   /** Article Wikipédia (fr) qui documente le plat ; sert de source et pour la photo. */
   w?: string;
@@ -38,13 +49,22 @@ export function deplier(r: RecetteCompacte): Recette {
       preparation,
     };
   });
-  const etapes: Etape[] = r.e.map(([action, repere, minutes, dose], k) => ({
-    ordre: k + 1,
-    action,
-    repere,
-    dose,
-    minuteurSec: minutes ? Math.round(minutes * 60) : undefined,
-  }));
+  const etapes: Etape[] = r.e.map((x, k) => {
+    if (Array.isArray(x)) {
+      const [action, repere, minutes, dose] = x;
+      return { ordre: k + 1, action, repere, dose, minuteurSec: minutes ? Math.round(minutes * 60) : undefined };
+    }
+    return {
+      ordre: k + 1,
+      action: x.a,
+      repere: x.r,
+      dose: x.dose,
+      doses: x.d?.map(([ingredientId, part]) => ({ ingredientId, part })),
+      feu: x.feu,
+      astuce: x.astuce,
+      minuteurSec: x.min ? Math.round(x.min * 60) : undefined,
+    };
+  });
   const pc = !!r.pc;
   return {
     slug: r.s,

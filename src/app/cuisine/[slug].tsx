@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Confettis, Progression, Pulsation } from '@/components/anim';
 import { Bouton } from '@/components/ui';
 import { Couleurs, Espace, Rayon } from '@/constants/theme';
+import { dosesEtape } from '@/domain/quantites';
 import { useMijote, useRecette } from '@/state/mijote';
 
 function formaterDuree(ms: number) {
@@ -63,6 +64,7 @@ export default function ModeCuisine() {
     );
   }
   const e = recette.etapes[etape]!;
+  const doses = dosesEtape(e, recette, portions, etat.catalogue.ingredients);
   const dureeMs = (e.minuteurSec ?? 0) * 1000;
   const resteMs = minuteur ? (minuteur.finA != null ? minuteur.finA - maintenant : minuteur.resteMs) : dureeMs;
   const termine = minuteur != null && resteMs <= 0;
@@ -106,14 +108,28 @@ export default function ModeCuisine() {
       <Progression ratio={(etape + 1) / total} />
 
       <Animated.View key={etape} entering={FadeInRight.springify().damping(16)} exiting={FadeOutLeft.duration(150)} style={styles.corps}>
+        {e.feu ? <Text style={styles.feu}>{e.feu}</Text> : null}
         <Text accessibilityRole="header" style={styles.action}>{e.action}</Text>
-        {e.dose ? <Text style={styles.dose}>{e.dose}</Text> : null}
+        {doses.length > 0 || e.dose ? (
+          <View style={styles.dose}>
+            {doses.map((d) => (
+              <Text key={d} style={styles.doseTexte}>• {d}</Text>
+            ))}
+            {e.dose ? <Text style={styles.doseTexte}>{e.dose}</Text> : null}
+          </View>
+        ) : null}
         <View style={styles.repere}>
           <Text style={styles.repereTexte}>
             <Text style={{ fontWeight: '900' }}>C’est réussi quand </Text>
             {e.repere}
           </Text>
         </View>
+        {e.astuce ? (
+          <Text style={styles.astuce}>
+            <Text style={{ fontWeight: '900' }}>Astuce : </Text>
+            {e.astuce}
+          </Text>
+        ) : null}
         {e.minuteurSec ? (
           <Pulsation actif={termine} style={styles.minuteur}>
             <Text style={styles.temps} accessibilityLabel={termine ? 'Minuteur terminé' : `Temps restant ${formaterDuree(resteMs)}`}>
@@ -153,9 +169,12 @@ const styles = StyleSheet.create({
   entete: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   quitter: { borderColor: Couleurs.creme, backgroundColor: Couleurs.creme },
   compteur: { color: Couleurs.creme, fontWeight: '800', fontSize: 14 },
-  corps: { flex: 1, justifyContent: 'center', gap: Espace.l },
-  action: { color: Couleurs.creme, fontSize: 28, fontWeight: '900', lineHeight: 34 },
-  dose: { color: Couleurs.creme, fontSize: 16, fontWeight: '700', backgroundColor: 'rgba(253,243,227,0.1)', borderRadius: Rayon.m, padding: Espace.m },
+  corps: { flex: 1, justifyContent: 'center', gap: Espace.m },
+  action: { color: Couleurs.creme, fontSize: 22, fontWeight: '800', lineHeight: 29 },
+  feu: { alignSelf: 'flex-start', color: Couleurs.aubergine, backgroundColor: Couleurs.vapeur, fontWeight: '900', fontSize: 13, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, overflow: 'hidden' },
+  doseTexte: { color: Couleurs.creme, fontSize: 15, fontWeight: '700', lineHeight: 22 },
+  astuce: { color: Couleurs.creme, fontSize: 14, lineHeight: 20, opacity: 0.9 },
+  dose: { backgroundColor: 'rgba(253,243,227,0.1)', borderRadius: Rayon.m, padding: Espace.m, gap: 2 },
   repere: { backgroundColor: Couleurs.creme, borderRadius: Rayon.m, padding: Espace.m },
   repereTexte: { color: Couleurs.aubergine, fontSize: 15, lineHeight: 21 },
   minuteur: { backgroundColor: Couleurs.vapeur, borderRadius: Rayon.l, padding: Espace.m, paddingLeft: Espace.l, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

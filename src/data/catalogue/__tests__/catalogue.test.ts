@@ -20,5 +20,16 @@ describe('catalogue', () => {
     expect(r.tempsTotalMin).toBeGreaterThanOrEqual(r.tempsActifMin);
     expect(r.ingredients.some((i) => i.indispensable)).toBe(true);
     for (const e of r.etapes) expect(e.repere.length).toBeGreaterThan(0);
+    // Les doses d'étapes renvoient à des ingrédients de la recette, sans dépasser la quantité prévue.
+    const total: Record<string, number> = {};
+    for (const e of r.etapes) {
+      for (const d of e.doses ?? []) {
+        expect(r.ingredients.some((i) => i.ingredientId === d.ingredientId)).toBe(true);
+        total[d.ingredientId] = (total[d.ingredientId] ?? 0) + d.part;
+      }
+    }
+    for (const [id, part] of Object.entries(total)) {
+      expect([id, part <= 2.01]).toEqual([id, true]);
+    }
   });
 });

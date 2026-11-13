@@ -1,4 +1,4 @@
-import type { EtatStock, IngredientRecette, Recette, UniteBase } from './types';
+import type { Etape, EtatStock, Ingredient, IngredientRecette, Recette, UniteBase } from './types';
 
 /**
  * Quantité requise pour `demande` portions (ou pièces).
@@ -43,4 +43,20 @@ export function formaterQuantite(valeur: number, unite: UniteBase): string {
   if (unite === 'ml') return valeur >= 1000 ? `${nf(valeur / 1000, 2)} l` : `${nf(valeur)} ml`;
   const arrondi = Math.round(valeur * 10) / 10;
   return `${nf(arrondi, 1)} pièce${arrondi >= 2 ? 's' : ''}`;
+}
+
+/** Doses d'une étape, calculées pour le nombre de portions demandé (« 750 g de riz local blanchi »). */
+export function dosesEtape(
+  etape: Etape,
+  recette: Recette,
+  portions: number,
+  ingredients: Record<string, Ingredient>,
+): string[] {
+  return (etape.doses ?? []).flatMap((d) => {
+    const ri = recette.ingredients.find((i) => i.ingredientId === d.ingredientId);
+    const ing = ingredients[d.ingredientId];
+    if (!ri || !ing) return [];
+    const q = quantiteRequise(ri, recette.rendement.valeur, portions) * d.part;
+    return [`${formaterQuantite(q, ing.unite)} · ${ing.nom.toLowerCase()}`];
+  });
 }

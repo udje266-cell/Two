@@ -21,10 +21,20 @@ export type IngredientRecette = {
   preparation?: string;
 };
 
+/** Quantité d'un ingrédient utilisée à une étape : une part (0 à 1) de la quantité de la recette. */
+export type DoseEtape = { ingredientId: string; part: number };
+
 export type Etape = {
   ordre: number;
   action: string;
+  /** Dose libre (eau, sel « une pincée »…), en plus des doses calculées. */
   dose?: string;
+  /** Ingrédients utilisés à cette étape, recalculés selon le nombre de portions. */
+  doses?: DoseEtape[];
+  /** Feu ou température, par ex. « Feu moyen » ou « Four 180 °C ». */
+  feu?: string;
+  /** Conseil pour débutant : erreur fréquente, geste expliqué. */
+  astuce?: string;
   /** Repère de réussite compréhensible par un débutant. */
   repere: string;
   minuteurSec?: number;
