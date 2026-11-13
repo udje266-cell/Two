@@ -84,6 +84,9 @@ export async function chargerCatalogue(): Promise<Catalogue> {
       }];
     });
 
+    // Tant qu'aucune recette n'est publiée dans la base, on garde le catalogue local pour ne pas afficher une app vide.
+    if (recettes.length === 0) return catalogueLocal;
+
     return {
       recettes,
       ingredients: Object.fromEntries((ing.data ?? []).map((i) => [i.id, i as Ingredient])),

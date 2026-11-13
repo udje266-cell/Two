@@ -36,7 +36,8 @@ npm run lint
 ```bash
 npx supabase init           # une seule fois, crée supabase/config.toml
 npx supabase start
-npx supabase db reset       # applique la migration et seed.sql
+npx supabase db reset       # applique la migration et seed.sql (121 recettes au statut « a_tester »)
+npx tsx scripts/exporter-catalogue.ts   # régénère seed.sql après une modification du catalogue
 ```
 
 Le public ne lit que les versions de recette **publiées** et les relevés de prix **validés**. L'écriture est réservée aux éditeurs (table `editeurs`).
