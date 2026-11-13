@@ -1,8 +1,12 @@
-import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Couleurs, Espace, Rayon } from '@/constants/theme';
 import type { Niveau, Recette } from '@/domain/types';
+
+import { Rebond } from './anim';
+import { Photo } from './photo';
 
 export const LIBELLE_NIVEAU: Record<Niveau, string> = {
   debutant: 'Débutant',
@@ -17,19 +21,26 @@ export function dureeLisible(min: number): string {
   return m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`;
 }
 
-export function CarteRecette({ recette }: { recette: Recette }) {
+/** Carte de recette qui apparaît en cascade (selon `rang`) et rebondit au toucher. */
+export function CarteRecette({ recette, rang = 0 }: { recette: Recette; rang?: number }) {
   return (
-    <Link href={{ pathname: '/recette/[slug]', params: { slug: recette.slug } }} asChild>
-      <Pressable accessibilityRole="button" style={styles.carte}>
-        <View style={styles.photo} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" />
+    <Animated.View entering={FadeInDown.delay(Math.min(rang, 10) * 50).springify().damping(14)}>
+      <Rebond
+        accessibilityLabel={`${recette.titre}, ${recette.origine}`}
+        onPress={() => router.push({ pathname: '/recette/[slug]', params: { slug: recette.slug } })}
+        style={styles.carte}>
+        <Photo id={recette.slug} type="recette" titre={recette.titre} style={styles.photo} />
         <View style={styles.corps}>
           <Text style={styles.titre}>{recette.titre}</Text>
+          <Text style={styles.meta} numberOfLines={1}>
+            {recette.origine}
+          </Text>
           <Text style={styles.meta}>
-            {recette.origine} · {LIBELLE_NIVEAU[recette.niveau]} · {dureeLisible(recette.tempsTotalMin)}
+            {LIBELLE_NIVEAU[recette.niveau]} · {dureeLisible(recette.tempsTotalMin)}
           </Text>
         </View>
-      </Pressable>
-    </Link>
+      </Rebond>
+    </Animated.View>
   );
 }
 
@@ -42,7 +53,7 @@ const styles = StyleSheet.create({
     borderRadius: Rayon.l,
     padding: Espace.s + 2,
   },
-  photo: { width: 64, height: 64, borderRadius: Rayon.m, backgroundColor: '#E9B36F' },
+  photo: { width: 72, height: 72 },
   corps: { flex: 1, gap: 3 },
   titre: { fontSize: 15, fontWeight: '800', color: Couleurs.texte },
   meta: { fontSize: 13, color: Couleurs.texteSecondaire },

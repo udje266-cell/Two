@@ -46,6 +46,16 @@ export type Recette = {
   plageTestee: { min: number; max: number };
   ingredients: IngredientRecette[];
   etapes: Etape[];
+  /** Référence documentaire du plat. */
+  source?: string;
+};
+
+/** Photo sous licence libre, avec les crédits exigés par la licence. */
+export type Photo = {
+  auteur: string;
+  licence: string;
+  lienLicence?: string;
+  source: string;
 };
 
 /** Relevé de prix d'un produit, en FCFA par kg, par litre ou par pièce. */

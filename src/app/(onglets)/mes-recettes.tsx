@@ -21,7 +21,7 @@ export default function MesRecettes() {
 
         <SousTitre>Favoris</SousTitre>
         {favoris.length ? (
-          favoris.map((r) => <CarteRecette key={r.slug} recette={r} />)
+          favoris.map((r, k) => <CarteRecette key={r.slug} recette={r} rang={k} />)
         ) : (
           <Texte secondaire>Touchez ♡ sur une recette pour la retrouver ici.</Texte>
         )}

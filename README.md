@@ -41,6 +41,15 @@ npx supabase db reset       # applique la migration et seed.sql
 
 Le public ne lit que les versions de recette **publiées** et les relevés de prix **validés**. L'écriture est réservée aux éditeurs (table `editeurs`).
 
+## Catalogue
+
+121 recettes dans `src/data/catalogue/` : Côte d’Ivoire (24), reste de l’Afrique (17), Maghreb et Moyen-Orient (17), Europe (20), Asie et Amériques (19), boulangerie, viennoiserie, pâtisserie, desserts et boissons (24).
+Ce sont des **brouillons non testés**, écrits pour des débutants (une action par étape, un repère de réussite). Ils doivent passer le circuit test et relecture du cahier des charges avant publication. `npm test` vérifie leur cohérence (ingrédients connus, temps, étapes).
+
+## Photos
+
+`node scripts/photos.mjs` télécharge depuis Wikimedia Commons les photos des plats et des ingrédients, **uniquement sous licence libre** (CC0, CC BY, CC BY-SA, Licence Art Libre, domaine public), les recadre en 480 px et génère `src/data/photos.ts` avec auteur et licence. Le crédit est affiché sous chaque photo dans l’application. Les images vérifiées et jugées hors sujet sont listées dans `REJETS`.
+
 ## Données
 
 Seul le prix du riz est un relevé réel (OCPV, 2–8 novembre 2026, 720 FCFA/kg, district d'Abidjan). Les autres ingrédients s'affichent « prix à relever » et le budget est signalé comme incomplet. Les recettes de départ sont des brouillons non testés.

@@ -1,28 +1,38 @@
 import { Image } from 'expo-image';
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Rebond, Vapeur } from '@/components/anim';
 import { CarteRecette } from '@/components/carte-recette';
+import { Photo } from '@/components/photo';
 import { SousTitre } from '@/components/ui';
 import { Couleurs, Espace, Rayon } from '@/constants/theme';
 import { useMijote } from '@/state/mijote';
 
-const ENTREES = ['Cuisines du monde', 'Pâtisserie', 'Viennoiserie', 'Boulangerie'];
+const ENTREES: { libelle: string; famille?: string }[] = [
+  { libelle: 'Cuisines du monde' },
+  { libelle: 'Pâtisserie', famille: 'Pâtisserie' },
+  { libelle: 'Viennoiserie', famille: 'Viennoiserie' },
+  { libelle: 'Boulangerie', famille: 'Boulangerie' },
+];
 
 export default function Accueil() {
   const { etat } = useMijote();
   const [requete, setRequete] = useState('');
   const enCours = etat.enCours && etat.catalogue.recettes.find((r) => r.slug === etat.enCours?.slug);
-  const premieres = etat.catalogue.recettes.filter((r) => r.niveau === 'debutant').slice(0, 5);
+  const ivoiriennes = etat.catalogue.recettes.filter((r) => r.origine.includes('Côte d’Ivoire'));
+  const premieres = etat.catalogue.recettes.filter((r) => r.niveau === 'debutant' && r.tempsTotalMin <= 45).slice(0, 6);
 
   return (
     <ScrollView style={{ backgroundColor: Couleurs.creme }} contentContainerStyle={{ paddingBottom: Espace.xxl }}>
       <View style={styles.entete}>
         <SafeAreaView edges={['top']} style={{ gap: Espace.l }}>
           <View style={styles.ligne}>
-            <Image source={require('@/assets/images/icon.png')} style={styles.icone} accessibilityIgnoresInvertColors />
+            <Vapeur taille={40}>
+              <Image source={require('@/assets/images/icon.png')} style={styles.icone} accessibilityIgnoresInvertColors />
+            </Vapeur>
             <Text style={styles.marque}>Mijote</Text>
             <View style={{ flex: 1 }} />
             <Text style={styles.ville}>{etat.ville}</Text>
@@ -55,25 +65,40 @@ export default function Accueil() {
           </Link>
         ) : null}
 
-        <Link href="/explorer" asChild>
-          <Pressable accessibilityRole="button" style={styles.vedette}>
-            <Text style={styles.vedetteLabel}>Mise en avant</Text>
-            <Text style={styles.vedetteTitre}>Cuisine ivoirienne</Text>
-          </Pressable>
-        </Link>
+        <Rebond style={styles.vedette} onPress={() => router.push({ pathname: '/explorer', params: { origine: 'Côte d’Ivoire' } })}>
+          <Text style={styles.vedetteLabel}>Mise en avant · {ivoiriennes.length} recettes</Text>
+          <Text style={styles.vedetteTitre}>Cuisine ivoirienne</Text>
+        </Rebond>
+        <FlatList
+          horizontal
+          data={ivoiriennes}
+          keyExtractor={(r) => r.slug}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: Espace.s + 2 }}
+          renderItem={({ item }) => (
+            <Rebond
+              accessibilityLabel={item.titre}
+              onPress={() => router.push({ pathname: '/recette/[slug]', params: { slug: item.slug } })}
+              style={styles.vignette}>
+              <Photo id={item.slug} type="recette" titre={item.titre} style={styles.vignettePhoto} arrondi={14} />
+              <Text style={styles.vignetteTitre} numberOfLines={2}>{item.titre}</Text>
+            </Rebond>
+          )}
+        />
         <View style={styles.grille}>
           {ENTREES.map((e) => (
-            <Link key={e} href="/explorer" asChild>
-              <Pressable accessibilityRole="button" style={styles.tuile}>
-                <Text style={styles.tuileTexte}>{e}</Text>
-              </Pressable>
-            </Link>
+            <Rebond
+              key={e.libelle}
+              style={styles.tuile}
+              onPress={() => router.push({ pathname: '/explorer', params: e.famille ? { famille: e.famille } : {} })}>
+              <Text style={styles.tuileTexte}>{e.libelle}</Text>
+            </Rebond>
           ))}
         </View>
 
         <SousTitre>Mes premières recettes</SousTitre>
-        {premieres.map((r) => (
-          <CarteRecette key={r.slug} recette={r} />
+        {premieres.map((r, k) => (
+          <CarteRecette key={r.slug} recette={r} rang={k} />
         ))}
       </View>
     </ScrollView>
@@ -104,5 +129,8 @@ const styles = StyleSheet.create({
   vedetteTitre: { color: Couleurs.aubergine, fontSize: 20, fontWeight: '900' },
   grille: { flexDirection: 'row', flexWrap: 'wrap', gap: Espace.s + 2 },
   tuile: { backgroundColor: Couleurs.blanc, borderRadius: Rayon.l, height: 72, padding: Espace.m, flexBasis: '47%', flexGrow: 1 },
+  vignette: { width: 132, gap: 6 },
+  vignettePhoto: { width: 132, height: 132 },
+  vignetteTitre: { fontSize: 14, fontWeight: '800', color: Couleurs.texte },
   tuileTexte: { color: Couleurs.aubergine, fontSize: 15, fontWeight: '800' },
 });

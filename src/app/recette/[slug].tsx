@@ -1,9 +1,12 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Pop } from '@/components/anim';
 import { dureeLisible, LIBELLE_NIVEAU } from '@/components/carte-recette';
+import { CreditPhoto, Photo } from '@/components/photo';
 import { Bouton, Carte, SousTitre, Texte, Titre } from '@/components/ui';
 import { CIBLE_MIN, Couleurs, Espace, Rayon } from '@/constants/theme';
 import { formaterFcfa } from '@/domain/budget';
@@ -47,6 +50,7 @@ export default function FicheRecette() {
   }
 
   const favori = etat.favoris.includes(recette.slug);
+  const sansPrix = calcul.aChiffrer.length === calcul.lignes.length;
   const changerStock = (ingredientId: string, requis: number) => {
     const actuel = stocks[ingredientId]?.etat ?? 'aucun';
     const suivant = CYCLE[(CYCLE.indexOf(actuel) + 1) % CYCLE.length];
@@ -70,7 +74,12 @@ export default function FicheRecette() {
           ),
         }}
       />
-      <ScrollView contentContainerStyle={styles.contenu}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+        <Animated.View entering={ZoomIn.springify().damping(14)}>
+          <Photo id={recette.slug} type="recette" titre={recette.titre} style={styles.hero} arrondi={0} />
+        </Animated.View>
+        <CreditPhoto id={recette.slug} type="recette" />
+        <View style={styles.contenu}>
         <View style={{ gap: 4 }}>
           <Text style={styles.provenance}>{[recette.origine, recette.familles[0]].filter(Boolean).join(' · ').toUpperCase()}</Text>
           <Titre>{recette.titre}</Titre>
@@ -85,7 +94,9 @@ export default function FicheRecette() {
           <View style={styles.compteur}>
             <Bouton libelle="−" variante="contour" accessibilityLabel="Une de moins" style={styles.pas}
               onPress={() => envoyer({ type: 'portions', slug: recette.slug, valeur: portions - 1 })} />
-            <Text style={styles.nombre} accessibilityLiveRegion="polite">{portions}</Text>
+            <Pop valeur={portions}>
+              <Text style={styles.nombre} accessibilityLiveRegion="polite">{portions}</Text>
+            </Pop>
             <Bouton libelle="+" accessibilityLabel="Une de plus" style={styles.pas}
               onPress={() => envoyer({ type: 'portions', slug: recette.slug, valeur: portions + 1 })} />
           </View>
@@ -99,12 +110,16 @@ export default function FicheRecette() {
         <View style={styles.montants}>
           <View style={[styles.montant, { backgroundColor: Couleurs.aubergine }]}>
             <Text style={[styles.montantLibelle, { color: Couleurs.creme }]}>Coût du plat</Text>
-            <Text style={[styles.montantValeur, { color: Couleurs.creme }]}>{formaterFcfa(calcul.coutPlat)}</Text>
-            <Text style={[styles.montantLibelle, { color: Couleurs.creme }]}>{formaterFcfa(calcul.coutParPortion)} / portion</Text>
+            <Pop valeur={calcul.coutPlat}>
+              <Text style={[styles.montantValeur, { color: Couleurs.creme }]}>{sansPrix ? 'À chiffrer' : formaterFcfa(calcul.coutPlat)}</Text>
+            </Pop>
+            <Text style={[styles.montantLibelle, { color: Couleurs.creme }]}>{sansPrix ? 'prix à relever' : `${formaterFcfa(calcul.coutParPortion)} / portion`}</Text>
           </View>
           <View style={[styles.montant, { backgroundColor: Couleurs.vapeur }]}>
             <Text style={styles.montantLibelle}>Budget courses</Text>
-            <Text style={styles.montantValeur}>{formaterFcfa(calcul.budgetCourses)}</Text>
+            <Pop valeur={calcul.budgetCourses}>
+              <Text style={styles.montantValeur}>{sansPrix ? 'À chiffrer' : formaterFcfa(calcul.budgetCourses)}</Text>
+            </Pop>
             <Text style={styles.montantLibelle}>{calcul.lignes.filter((l) => l.manquant > 0).length} à acheter</Text>
           </View>
         </View>
@@ -126,6 +141,7 @@ export default function FicheRecette() {
               accessibilityHint="Change l’état du stock"
               onPress={() => changerStock(l.ingredient.id, l.requis)}
               style={styles.ingredient}>
+              <Photo id={l.ingredient.id} type="ingredient" titre={l.ingredient.nom} style={styles.ingPhoto} arrondi={10} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={styles.ingNom}>
                   {l.ingredient.nom}
@@ -136,7 +152,9 @@ export default function FicheRecette() {
                   {l.ancien ? ' · relevé ancien' : ''}
                 </Text>
               </View>
-              <Text style={[styles.badge, badge(etatStock)]}>{LIBELLE_STOCK[etatStock]}</Text>
+              <Pop valeur={etatStock}>
+                <Text style={[styles.badge, badge(etatStock)]}>{LIBELLE_STOCK[etatStock]}</Text>
+              </Pop>
             </Pressable>
           );
         })}
@@ -152,6 +170,12 @@ export default function FicheRecette() {
             {e.ordre}. {e.action}
           </Texte>
         ))}
+        {recette.source ? (
+          <Texte secondaire style={{ marginTop: Espace.m }}>
+            Recette en cours de validation (non encore testée par l’équipe). Référence sur le plat : {recette.source}
+          </Texte>
+        ) : null}
+        </View>
       </ScrollView>
 
       <SafeAreaView edges={['bottom']} style={styles.barre}>
@@ -181,7 +205,9 @@ function badge(e: EtatStock['etat']) {
 }
 
 const styles = StyleSheet.create({
-  contenu: { padding: Espace.xl, gap: Espace.m, paddingBottom: 120 },
+  contenu: { padding: Espace.xl, paddingTop: Espace.m, gap: Espace.m },
+  hero: { width: '100%', height: 240 },
+  ingPhoto: { width: 44, height: 44 },
   provenance: { fontSize: 12, fontWeight: '800', color: Couleurs.caramel },
   portions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   portionsLibelle: { fontSize: 15, fontWeight: '800', color: Couleurs.texte },
