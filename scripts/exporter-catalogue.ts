@@ -1,3 +1,4 @@
+/// <reference types="node" />
 // Génère supabase/seed.sql à partir du catalogue de l'application (src/data/catalogue).
 // Usage : npx tsx scripts/exporter-catalogue.ts
 // Les recettes sont importées au statut « a_tester » : elles ne sont pas visibles du public
