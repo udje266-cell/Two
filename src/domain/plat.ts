@@ -41,8 +41,10 @@ export function calculerPlat(
   stocks: Record<string, EtatStock>,
   ctx: ContexteCalcul,
 ): CalculPlat {
-  const lignes: LignePlat[] = recette.ingredients.map((ri) => {
-    const ingredient = ctx.ingredients[ri.ingredientId];
+  // Un ingrédient absent du référentiel (catalogue partiel) est ignoré plutôt que de faire planter l'écran.
+  const connus = recette.ingredients.filter((ri) => ctx.ingredients[ri.ingredientId] !== undefined);
+  const lignes: LignePlat[] = connus.map((ri) => {
+    const ingredient = ctx.ingredients[ri.ingredientId]!;
     const requis = quantiteRequise(ri, recette.rendement.valeur, portions);
     const stock = stocks[ri.ingredientId] ?? { etat: 'aucun' };
     const manquant = quantiteManquante(requis, stock);

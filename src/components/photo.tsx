@@ -40,7 +40,9 @@ export function CreditPhoto({ id, type }: { id: string; type: 'recette' | 'ingre
   const p = (type === 'recette' ? photosRecettes : photosIngredients)[id];
   if (!p) return null;
   return (
-    <Text style={styles.credit} accessibilityRole="link" onPress={() => Linking.openURL(p.credit.source)}>
+    <Text style={styles.credit} accessibilityRole="link" onPress={() => {
+        if (p.credit.source.startsWith('https://commons.wikimedia.org/')) Linking.openURL(p.credit.source).catch(() => undefined);
+      }}>
       Photo : {p.credit.auteur}, {p.credit.licence}, via Wikimedia Commons
     </Text>
   );

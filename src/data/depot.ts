@@ -53,10 +53,11 @@ export async function chargerCatalogue(): Promise<Catalogue> {
     const erreur = rec.error ?? ing.error ?? rel.error ?? fmt.error;
     if (erreur) throw erreur;
 
-    const recettes: Recette[] = (rec.data ?? []).map((r) => {
-      const v = (r.versions_recette as unknown as LigneVersion[])[0];
+    const recettes: Recette[] = (rec.data ?? []).flatMap((r) => {
+      const v = (r.versions_recette as unknown as LigneVersion[] | null)?.[0];
+      if (!v || !(Number(v.rendement_valeur) > 0)) return [];
       const lieux = (r.recettes_lieux as unknown as { lieux: { nom: string } | null }[]) ?? [];
-      return {
+      return [{
         slug: r.slug,
         titre: r.titre,
         alias: r.alias ?? [],
@@ -80,23 +81,25 @@ export async function chargerCatalogue(): Promise<Catalogue> {
             ordre: e.ordre, action: e.action, dose: e.dose ?? undefined, repere: e.repere,
             minuteurSec: e.minuteur_sec ?? undefined,
           })),
-      };
+      }];
     });
 
     return {
       recettes,
       ingredients: Object.fromEntries((ing.data ?? []).map((i) => [i.id, i as Ingredient])),
-      releves: (rel.data ?? []).map((r) => ({
+      releves: (rel.data ?? []).filter((r) => Number.isFinite(Number(r.prix_moyen)) && r.prix_moyen !== null).map((r) => ({
         ingredientId: r.ingredient_id, ville: r.ville, zone: r.zone,
         prixMin: r.prix_min ?? undefined, prixMoyen: Number(r.prix_moyen), prixMax: r.prix_max ?? undefined,
         unitePrix: r.unite_prix, source: r.source, dateReleve: r.date_releve,
       })),
-      formats: (fmt.data ?? []).map((f) => ({
+      formats: (fmt.data ?? []).filter((f) => Number(f.quantite) > 0 && f.prix !== null).map((f) => ({
         ingredientId: f.ingredient_id, ville: f.ville, libelle: f.libelle, quantite: Number(f.quantite), prix: Number(f.prix),
       })),
       source: 'supabase',
     };
-  } catch {
+  } catch (e) {
+    // Hors connexion ou erreur serveur : on garde les données locales pour rester utilisable.
+    if (__DEV__) console.warn('Mijote : catalogue Supabase indisponible', e);
     return catalogueLocal;
   }
 }

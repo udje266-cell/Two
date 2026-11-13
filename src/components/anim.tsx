@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
@@ -36,7 +36,13 @@ export function Rebond({ style, children, ...p }: Omit<PressableProps, 'style'> 
 /** Rejoue un petit « pop » à chaque changement de `valeur`. */
 export function Pop({ valeur, children, style }: { valeur: unknown; children: ReactNode; style?: StyleProp<ViewStyle> }) {
   const echelle = useSharedValue(1);
+  const premier = useRef(true);
   useEffect(() => {
+    // Pas d'animation au premier affichage : seulement quand la valeur change.
+    if (premier.current) {
+      premier.current = false;
+      return;
+    }
     echelle.set(withSequence(withTiming(1.25, { duration: 110 }), withSpring(1, { damping: 6, stiffness: 260 })));
   }, [valeur, echelle]);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: echelle.value }] }));

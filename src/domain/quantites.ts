@@ -28,7 +28,7 @@ export function quantiteManquante(requis: number, stock: EtatStock): number {
     case 'assez':
       return 0;
     case 'partie':
-      return Math.max(0, requis - stock.disponible);
+      return Number.isFinite(stock.disponible) ? Math.max(0, requis - stock.disponible) : requis;
     case 'aucun':
     case 'a_verifier':
       return requis;
@@ -41,5 +41,6 @@ export function formaterQuantite(valeur: number, unite: UniteBase): string {
     n.toLocaleString('fr-FR', { maximumFractionDigits: d }).replace(/ | /g, ' ');
   if (unite === 'g') return valeur >= 1000 ? `${nf(valeur / 1000, 2)} kg` : `${nf(valeur)} g`;
   if (unite === 'ml') return valeur >= 1000 ? `${nf(valeur / 1000, 2)} l` : `${nf(valeur)} ml`;
-  return `${nf(valeur, 1)} pièce${valeur > 1 ? 's' : ''}`;
+  const arrondi = Math.round(valeur * 10) / 10;
+  return `${nf(arrondi, 1)} pièce${arrondi >= 2 ? 's' : ''}`;
 }

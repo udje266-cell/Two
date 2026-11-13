@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNo
 import { catalogueLocal, chargerCatalogue, type Catalogue } from '@/data/depot';
 import type { EtatStock } from '@/domain/types';
 
+import { validerEtat, type EtatPersiste } from './restauration';
+
 type EnCours = { slug: string; etape: number; portions: number };
 
 /** Minuteur sauvegardé avec son échéance, pour retrouver le bon état après une mise en veille. */
@@ -18,11 +20,13 @@ type Etat = {
   courses: string[];
   enCours: EnCours | null;
   minuteur: Minuteur | null;
+  /** Vrai une fois l'état de l'appareil relu : on ne sauvegarde pas avant. */
+  restaure: boolean;
 };
 
 type Action =
   | { type: 'catalogue'; catalogue: Catalogue }
-  | { type: 'restaurer'; etat: Partial<Etat> }
+  | { type: 'restaurer'; etat: Partial<EtatPersiste> }
   | { type: 'portions'; slug: string; valeur: number }
   | { type: 'stock'; slug: string; ingredientId: string; stock: EtatStock }
   | { type: 'favori'; slug: string }
@@ -40,6 +44,7 @@ const initial: Etat = {
   courses: [],
   enCours: null,
   minuteur: null,
+  restaure: false,
 };
 
 function reducteur(etat: Etat, a: Action): Etat {
@@ -47,9 +52,10 @@ function reducteur(etat: Etat, a: Action): Etat {
     case 'catalogue':
       return { ...etat, catalogue: a.catalogue };
     case 'restaurer':
-      return { ...etat, ...a.etat };
+      return { ...etat, ...a.etat, restaure: true };
     case 'portions':
-      return { ...etat, portions: { ...etat.portions, [a.slug]: Math.max(1, Math.min(50, a.valeur)) } };
+      if (!Number.isFinite(a.valeur)) return etat;
+      return { ...etat, portions: { ...etat.portions, [a.slug]: Math.max(1, Math.min(50, Math.round(a.valeur))) } };
     case 'stock':
       return { ...etat, stocks: { ...etat.stocks, [a.slug]: { ...etat.stocks[a.slug], [a.ingredientId]: a.stock } } };
     case 'favori':
@@ -80,18 +86,25 @@ export function FournisseurMijote({ children }: { children: ReactNode }) {
     let actif = true;
     AsyncStorage.getItem(CLE)
       .then((brut) => {
-        if (actif && brut) envoyer({ type: 'restaurer', etat: JSON.parse(brut) as Partial<Etat> });
+        if (actif) envoyer({ type: 'restaurer', etat: brut ? validerEtat(JSON.parse(brut) as unknown) : {} });
       })
-      .catch(() => undefined);
-    chargerCatalogue().then((catalogue) => actif && envoyer({ type: 'catalogue', catalogue }));
+      .catch((e: unknown) => {
+        // État illisible : on repart d'un état vide plutôt que de bloquer l'app.
+        if (__DEV__) console.warn('Mijote : état local illisible', e);
+        if (actif) envoyer({ type: 'restaurer', etat: {} });
+      });
+    void chargerCatalogue().then((catalogue) => actif && envoyer({ type: 'catalogue', catalogue }));
     return () => {
       actif = false;
     };
   }, []);
 
   useEffect(() => {
-    const { catalogue: _c, ...aSauver } = etat;
-    AsyncStorage.setItem(CLE, JSON.stringify(aSauver)).catch(() => undefined);
+    if (!etat.restaure) return;
+    const { catalogue: _c, restaure: _r, ...aSauver } = etat;
+    AsyncStorage.setItem(CLE, JSON.stringify(aSauver)).catch((e: unknown) => {
+      if (__DEV__) console.warn('Mijote : sauvegarde locale impossible', e);
+    });
   }, [etat]);
 
   const valeur = useMemo(() => ({ etat, envoyer }), [etat]);

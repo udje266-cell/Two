@@ -23,7 +23,7 @@ export type Achat =
  */
 export function coutAchat(manquant: number, releve: Releve | undefined, format?: FormatVente): Achat | null {
   if (manquant <= 0) return { mode: 'vrac', quantiteAchetee: 0, cout: 0, surplus: 0 };
-  if (format) {
+  if (format && format.quantite > 0 && Number.isFinite(format.prix)) {
     const nombre = Math.ceil(manquant / format.quantite);
     const quantiteAchetee = nombre * format.quantite;
     return { mode: 'format', format, nombre, quantiteAchetee, cout: nombre * format.prix, surplus: quantiteAchetee - manquant };
@@ -34,6 +34,7 @@ export function coutAchat(manquant: number, releve: Releve | undefined, format?:
 
 export function releveAncien(releve: Releve, aujourdhui: Date, seuilJours = SEUIL_RELEVE_ANCIEN_JOURS): boolean {
   const date = new Date(`${releve.dateReleve}T00:00:00Z`).getTime();
+  if (Number.isNaN(date)) return true;
   return (aujourdhui.getTime() - date) / 86_400_000 > seuilJours;
 }
 

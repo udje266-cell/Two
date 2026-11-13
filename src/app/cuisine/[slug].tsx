@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import Animated, { FadeInRight, FadeOutLeft, ZoomIn } from 'react-native-reanimated';
-import { AppState, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, AppState, StyleSheet, Text, Vibration, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Confettis, Progression, Pulsation } from '@/components/anim';
@@ -18,7 +18,10 @@ export default function ModeCuisine() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { etat, envoyer } = useMijote();
   const { recette, portions } = useRecette(slug);
-  const etape = etat.enCours?.slug === slug ? etat.enCours.etape : 0;
+  const total = recette?.etapes.length ?? 0;
+  // Étape bornée : un catalogue mis à jour peut avoir moins d'étapes que l'état sauvegardé.
+  const etapeBrute = etat.enCours?.slug === slug ? etat.enCours.etape : 0;
+  const etape = Math.min(Math.max(0, etapeBrute), Math.max(0, total - 1));
   const [maintenant, setMaintenant] = useState(() => Date.now());
   const [fini, setFini] = useState(false);
 
@@ -31,31 +34,51 @@ export default function ModeCuisine() {
   // Le minuteur est calculé à partir de son échéance : il reste juste après une mise en veille.
   const minuteur = etat.minuteur?.slug === slug && etat.minuteur.etape === etape ? etat.minuteur : null;
   const actif = minuteur?.finA != null;
+  const fin = minuteur?.finA ?? null;
+  const ecoule = fin !== null && maintenant >= fin;
   useEffect(() => {
-    if (!actif) return;
+    if (!actif || ecoule) return;
     const iv = setInterval(() => setMaintenant(Date.now()), 500);
     const abo = AppState.addEventListener('change', () => setMaintenant(Date.now()));
     return () => {
       clearInterval(iv);
       abo.remove();
     };
-  }, [actif]);
+  }, [actif, ecoule]);
 
-  if (!recette) return null;
-  const e = recette.etapes[etape];
-  const total = recette.etapes.length;
+  // À la fin du minuteur : vibration et annonce pour TalkBack, une seule fois.
+  useEffect(() => {
+    if (!ecoule) return;
+    Vibration.vibrate([0, 400, 200, 400, 200, 400]);
+    AccessibilityInfo.announceForAccessibility('Minuteur terminé');
+  }, [ecoule]);
+
+  const quitter = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  if (!recette || total === 0) {
+    return (
+      <SafeAreaView style={[styles.ecran, { justifyContent: 'center' }]}>
+        <Text style={styles.bravoTexte}>Recette introuvable.</Text>
+        <Bouton libelle="Retour" variante="accent" onPress={quitter} style={{ marginTop: 24 }} />
+      </SafeAreaView>
+    );
+  }
+  const e = recette.etapes[etape]!;
   const dureeMs = (e.minuteurSec ?? 0) * 1000;
   const resteMs = minuteur ? (minuteur.finA != null ? minuteur.finA - maintenant : minuteur.resteMs) : dureeMs;
   const termine = minuteur != null && resteMs <= 0;
 
-  const allerA = (i: number) => envoyer({ type: 'enCours', valeur: { slug: recette.slug, etape: i, portions } });
+  const allerA = (i: number) => {
+    // Un minuteur en pause sur l'étape quittée est abandonné ; un minuteur qui tourne continue.
+    if (etat.minuteur && etat.minuteur.finA === null) envoyer({ type: 'minuteur', valeur: null });
+    envoyer({ type: 'enCours', valeur: { slug: recette.slug, etape: i, portions } });
+  };
   const lancer = () => {
     setMaintenant(Date.now());
     envoyer({ type: 'minuteur', valeur: { slug: recette.slug, etape, finA: Date.now() + resteMs, resteMs } });
   };
-  const pause = () => envoyer({ type: 'minuteur', valeur: { slug: recette.slug, etape, finA: null, resteMs } });
+  const pause = () =>
+    envoyer({ type: 'minuteur', valeur: { slug: recette.slug, etape, finA: null, resteMs: fin !== null ? Math.max(0, fin - Date.now()) : resteMs } });
   const annuler = () => envoyer({ type: 'minuteur', valeur: null });
-  const quitter = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   if (fini) {
     return (

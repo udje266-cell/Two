@@ -92,10 +92,10 @@ export default function FicheRecette() {
         <Carte style={styles.portions}>
           <Text style={styles.portionsLibelle}>{recette.rendement.unite === 'pieces' ? 'Pièces' : 'Personnes'}</Text>
           <View style={styles.compteur}>
-            <Bouton libelle="−" variante="contour" accessibilityLabel="Une de moins" style={styles.pas}
+            <Bouton libelle="−" variante="contour" accessibilityLabel="Une de moins" style={styles.pas} disabled={portions <= 1}
               onPress={() => envoyer({ type: 'portions', slug: recette.slug, valeur: portions - 1 })} />
             <Pop valeur={portions}>
-              <Text style={styles.nombre} accessibilityLiveRegion="polite">{portions}</Text>
+              <Text style={styles.nombre} accessibilityLiveRegion="polite" accessibilityLabel={`${portions} ${recette.rendement.unite === 'pieces' ? 'pièces' : 'personnes'}`}>{portions}</Text>
             </Pop>
             <Bouton libelle="+" accessibilityLabel="Une de plus" style={styles.pas}
               onPress={() => envoyer({ type: 'portions', slug: recette.slug, valeur: portions + 1 })} />
@@ -138,7 +138,8 @@ export default function FicheRecette() {
             <Pressable
               key={l.ingredient.id}
               accessibilityRole="button"
-              accessibilityHint="Change l’état du stock"
+              accessibilityLabel={`${l.ingredient.nom}, ${formaterQuantite(l.requis, l.ingredient.unite)}, ${LIBELLE_STOCK[etatStock]}`}
+              accessibilityHint={`Touchez pour passer à : ${LIBELLE_STOCK[CYCLE[(CYCLE.indexOf(etatStock) + 1) % CYCLE.length]!]}`}
               onPress={() => changerStock(l.ingredient.id, l.requis)}
               style={styles.ingredient}>
               <Photo id={l.ingredient.id} type="ingredient" titre={l.ingredient.nom} style={styles.ingPhoto} arrondi={10} />
